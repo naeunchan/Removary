@@ -10,11 +10,11 @@ type EntryFormProps = {
 
 export const EntryForm: React.FC<EntryFormProps> = ({ draft, onChange, onSubmit }) => (
   <View style={styles.formCard}>
-    <Text style={styles.sectionTitle}>새 다이어리 작성</Text>
+    <Text style={styles.sectionTitle}>새로운 메모</Text>
     <TextInput
       style={styles.input}
-      placeholder="제목 (선택)"
-      placeholderTextColor="#94a3b8"
+      placeholder="제목"
+      placeholderTextColor="#a1a1aa"
       value={draft.title}
       onChangeText={(text) => onChange('title', text)}
       maxLength={120}
@@ -22,61 +22,67 @@ export const EntryForm: React.FC<EntryFormProps> = ({ draft, onChange, onSubmit 
     />
     <TextInput
       style={[styles.input, styles.textarea]}
-      placeholder="오늘은 어떤 하루였나요?"
-      placeholderTextColor="#94a3b8"
+      placeholder="내용을 입력하세요"
+      placeholderTextColor="#a1a1aa"
       value={draft.content}
       onChangeText={(text) => onChange('content', text)}
       multiline
       textAlignVertical="top"
     />
     <TouchableOpacity style={styles.submitButton} onPress={onSubmit}>
-      <Text style={styles.submitText}>저장하기</Text>
+      <Text style={styles.submitText}>저장</Text>
     </TouchableOpacity>
   </View>
 );
 
 const styles = StyleSheet.create({
   formCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.25)',
-    marginBottom: 24,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    marginBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#e2e8f0',
-    marginBottom: 16,
+    color: '#1c1c1e',
+    marginBottom: 18,
   },
   input: {
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    backgroundColor: '#f5f5f7',
+    borderRadius: 12,
+    paddingHorizontal: 15,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#f8fafc',
-    marginBottom: 16,
+    color: '#1c1c1e',
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.2)',
+    borderColor: '#e5e7eb',
   },
   textarea: {
     minHeight: 140,
+    paddingTop: 16,
   },
   submitButton: {
-    backgroundColor: '#3b82f6',
-    paddingVertical: 16,
-    borderRadius: 16,
+    marginTop: 10,
+    backgroundColor: '#fdd663',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 3,
+    shadowColor: '#fcd34d',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 2,
   },
   submitText: {
-    color: '#fff',
+    color: '#1c1c1e',
     fontWeight: '600',
     fontSize: 16,
   },

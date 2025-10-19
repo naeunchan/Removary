@@ -14,11 +14,20 @@ import { EntrySummary } from '@/components/EntrySummary';
 import { useDiaryEntries } from '@/hooks/useDiaryEntries';
 
 export const HomeScreen: React.FC = () => {
-  const { entries, draft, isLoading, handleChange, handleSubmit, handleDelete } = useDiaryEntries();
+  const {
+    entries,
+    draft,
+    isLoading,
+    lastVisitedAt,
+    daysSinceLastVisit,
+    handleChange,
+    handleSubmit,
+    handleDelete,
+  } = useDiaryEntries();
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -27,7 +36,7 @@ export const HomeScreen: React.FC = () => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <AppHeader />
+          <AppHeader lastVisitedAt={lastVisitedAt} daysSinceLastVisit={daysSinceLastVisit} />
           <EntryForm draft={draft} onChange={handleChange} onSubmit={handleSubmit} />
           <EntrySummary count={entries.length} />
           <EntryList
@@ -44,13 +53,13 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f2f2f7',
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
   },
   scrollContent: {
-    paddingVertical: 24,
+    paddingVertical: 28,
   },
 });
