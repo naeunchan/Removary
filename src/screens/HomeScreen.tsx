@@ -7,15 +7,14 @@ import {
   StatusBar,
   StyleSheet,
 } from 'react-native';
-import { AppHeader } from '../components/AppHeader';
-import { EntryForm } from '../components/EntryForm';
-import { EntryList } from '../components/EntryList';
-import { EntrySummary } from '../components/EntrySummary';
-import { useDiaryEntries } from '../hooks/useDiaryEntries';
+import { AppHeader } from '@/components/AppHeader';
+import { EntryForm } from '@/components/EntryForm';
+import { EntryList } from '@/components/EntryList';
+import { EntrySummary } from '@/components/EntrySummary';
+import { useDiaryEntries } from '@/hooks/useDiaryEntries';
 
 export const HomeScreen: React.FC = () => {
-  const { entries, draft, isLoading, now, expiresAt, handleChange, handleSubmit, handleDelete } =
-    useDiaryEntries();
+  const { entries, draft, isLoading, handleChange, handleSubmit, handleDelete } = useDiaryEntries();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -33,8 +32,6 @@ export const HomeScreen: React.FC = () => {
           <EntrySummary count={entries.length} />
           <EntryList
             entries={entries}
-            currentTime={now}
-            expiresAt={expiresAt}
             isLoading={isLoading}
             onDelete={handleDelete}
           />

@@ -1,23 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
-import { DAY_MS } from '../utils/time';
-
-const STORAGE_KEY = '@removary_entries';
-const LAST_ACCESS_KEY = '@removary_last_access';
-export const RETENTION_DAYS = 30;
-
-export interface DiaryEntry {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-}
-
-export interface DiaryDraft {
-  title: string;
-  content: string;
-}
+import { DAY_MS } from '@/utils/time';
+import { LAST_ACCESS_KEY, RETENTION_DAYS, STORAGE_KEY } from '@/constants/diary';
+import { DiaryDraft, DiaryEntry } from '@/types/diary';
 
 const createEmptyEntry = (): DiaryDraft => ({
   title: '',
@@ -64,6 +50,14 @@ export const useDiaryEntries = () => {
     }
   }, []);
 
+  const updateAccessTimestamp = useCallback(
+    (timestamp: number) => {
+      setExpiresAt(timestamp + RETENTION_DAYS * DAY_MS);
+      void persistLastAccess(timestamp);
+    },
+    [persistLastAccess]
+  );
+
   const loadEntries = useCallback(async () => {
     try {
       const [rawEntries, rawLastAccess] = await Promise.all([
@@ -77,6 +71,7 @@ export const useDiaryEntries = () => {
         parsedLastAccess !== null && !Number.isNaN(parsedLastAccess) ? parsedLastAccess : null;
 
       setNow(nowTs);
+
       if (lastAccessTimestamp && nowTs - lastAccessTimestamp >= RETENTION_DAYS * DAY_MS) {
         setEntries([]);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
@@ -91,29 +86,34 @@ export const useDiaryEntries = () => {
         setEntries([]);
       }
 
-      setExpiresAt(nowTs + RETENTION_DAYS * DAY_MS);
-      await persistLastAccess(nowTs);
+      updateAccessTimestamp(nowTs);
     } catch (error) {
       console.error('Failed to load diary entries', error);
       Alert.alert('오류', '다이어리를 불러오는 중 문제가 발생했어요.');
     } finally {
       setIsLoading(false);
     }
-  }, [persistLastAccess]);
+  }, [updateAccessTimestamp]);
 
   useEffect(() => {
     loadEntries();
   }, [loadEntries]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const current = Date.now();
-      setNow(current);
-      setExpiresAt(current + RETENTION_DAYS * DAY_MS);
-      void persistLastAccess(current);
-    }, 60 * 1000);
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
     return () => clearInterval(timer);
-  }, [persistLastAccess]);
+  }, []);
+
+  useEffect(() => {
+    if (!expiresAt) {
+      return;
+    }
+    if (now >= expiresAt) {
+      setEntries([]);
+      void persistEntries([]);
+      updateAccessTimestamp(now);
+    }
+  }, [expiresAt, now, persistEntries, updateAccessTimestamp]);
 
   const handleChange = useCallback((field: keyof DiaryDraft, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -134,8 +134,7 @@ export const useDiaryEntries = () => {
 
     const updatedAccess = Date.now();
     setNow(updatedAccess);
-    setExpiresAt(updatedAccess + RETENTION_DAYS * DAY_MS);
-    void persistLastAccess(updatedAccess);
+    updateAccessTimestamp(updatedAccess);
 
     setEntries((prev) => {
       const next = [newEntry, ...prev];
@@ -144,7 +143,7 @@ export const useDiaryEntries = () => {
     });
     setDraft(createEmptyEntry());
     Alert.alert('저장 완료', '새로운 다이어리가 추가되었어요.');
-  }, [draft, persistEntries, persistLastAccess]);
+  }, [draft, persistEntries, updateAccessTimestamp]);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -156,8 +155,7 @@ export const useDiaryEntries = () => {
           onPress: () => {
             const updatedAccess = Date.now();
             setNow(updatedAccess);
-            setExpiresAt(updatedAccess + RETENTION_DAYS * DAY_MS);
-            void persistLastAccess(updatedAccess);
+            updateAccessTimestamp(updatedAccess);
 
             setEntries((prev) => {
               const next = prev.filter((entry) => entry.id !== id);
@@ -168,7 +166,7 @@ export const useDiaryEntries = () => {
         },
       ]);
     },
-    [persistEntries, persistLastAccess]
+    [persistEntries, updateAccessTimestamp]
   );
 
   return {
