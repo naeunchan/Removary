@@ -3,6 +3,7 @@ export interface DiaryEntry {
   title: string;
   content: string;
   createdAt: string;
+  isCompleted: boolean;
 }
 
 export interface DiaryDraft {
