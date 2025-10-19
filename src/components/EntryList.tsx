@@ -30,7 +30,7 @@ export const EntryList: React.FC<EntryListProps> = ({
   if (entries.length === 0) {
     return (
       <View style={styles.listContainer}>
-        <Text style={styles.helperText}>아직 작성된 다이어리가 없어요.</Text>
+        <Text style={styles.helperText}>아직 작성된 메모가 없어요.</Text>
       </View>
     );
   }
@@ -50,20 +50,15 @@ export const EntryList: React.FC<EntryListProps> = ({
 
 const styles = StyleSheet.create({
   listContainer: {
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    borderRadius: 20,
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.2)',
+    paddingVertical: 6,
   },
   list: {
     paddingBottom: 12,
   },
   helperText: {
-    color: '#94a3b8',
+    color: '#9ca3af',
     textAlign: 'center',
-    paddingVertical: 24,
-    fontSize: 15,
+    paddingVertical: 36,
+    fontSize: 16,
   },
 });

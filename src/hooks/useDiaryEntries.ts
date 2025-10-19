@@ -41,6 +41,8 @@ export const useDiaryEntries = () => {
   const [draft, setDraft] = useState<DiaryDraft>(createEmptyEntry());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [now, setNow] = useState<number>(Date.now());
+  const [lastVisitedAt, setLastVisitedAt] = useState<number | null>(null);
+  const [daysSinceLastVisit, setDaysSinceLastVisit] = useState<number | null>(null);
   const persistEntries = usePersistEntries();
   const persistLastAccess = useCallback(async (timestamp: number) => {
     try {
@@ -51,8 +53,12 @@ export const useDiaryEntries = () => {
   }, []);
 
   const updateAccessTimestamp = useCallback(
-    (timestamp: number) => {
+    (timestamp: number, options?: { resetVisitDiff?: boolean }) => {
       setExpiresAt(timestamp + RETENTION_DAYS * DAY_MS);
+      if (options?.resetVisitDiff) {
+        setLastVisitedAt(timestamp);
+        setDaysSinceLastVisit(0);
+      }
       void persistLastAccess(timestamp);
     },
     [persistLastAccess]
@@ -71,6 +77,14 @@ export const useDiaryEntries = () => {
         parsedLastAccess !== null && !Number.isNaN(parsedLastAccess) ? parsedLastAccess : null;
 
       setNow(nowTs);
+      if (lastAccessTimestamp !== null) {
+        setLastVisitedAt(lastAccessTimestamp);
+        const diffDays = Math.max(0, Math.floor((nowTs - lastAccessTimestamp) / DAY_MS));
+        setDaysSinceLastVisit(diffDays);
+      } else {
+        setLastVisitedAt(null);
+        setDaysSinceLastVisit(null);
+      }
 
       if (lastAccessTimestamp && nowTs - lastAccessTimestamp >= RETENTION_DAYS * DAY_MS) {
         setEntries([]);
@@ -111,7 +125,7 @@ export const useDiaryEntries = () => {
     if (now >= expiresAt) {
       setEntries([]);
       void persistEntries([]);
-      updateAccessTimestamp(now);
+      updateAccessTimestamp(now, { resetVisitDiff: true });
     }
   }, [expiresAt, now, persistEntries, updateAccessTimestamp]);
 
@@ -134,7 +148,7 @@ export const useDiaryEntries = () => {
 
     const updatedAccess = Date.now();
     setNow(updatedAccess);
-    updateAccessTimestamp(updatedAccess);
+    updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
 
     setEntries((prev) => {
       const next = [newEntry, ...prev];
@@ -155,7 +169,7 @@ export const useDiaryEntries = () => {
           onPress: () => {
             const updatedAccess = Date.now();
             setNow(updatedAccess);
-            updateAccessTimestamp(updatedAccess);
+            updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
 
             setEntries((prev) => {
               const next = prev.filter((entry) => entry.id !== id);
@@ -175,6 +189,8 @@ export const useDiaryEntries = () => {
     isLoading,
     now,
     expiresAt,
+    lastVisitedAt,
+    daysSinceLastVisit,
     handleChange,
     handleSubmit,
     handleDelete,
