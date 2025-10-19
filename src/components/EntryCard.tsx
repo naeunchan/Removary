@@ -1,30 +1,19 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DiaryEntry, RETENTION_DAYS } from '../hooks/useDiaryEntries';
-import { formatRemainingTime, getExpiryTimestamp } from '../utils/time';
+import { DiaryEntry } from '@/types/diary';
 
 type EntryCardProps = {
   entry: DiaryEntry;
   onDelete: (id: string) => void;
-  currentTime: number;
 };
 
-export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete, currentTime }) => {
+export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete }) => {
   const createdAt = useMemo(() => new Date(entry.createdAt), [entry.createdAt]);
-  const expiresAt = useMemo(
-    () => getExpiryTimestamp(entry.createdAt, RETENTION_DAYS),
-    [entry.createdAt]
-  );
-  const remaining = useMemo(
-    () => formatRemainingTime(expiresAt, currentTime),
-    [expiresAt, currentTime]
-  );
 
   return (
     <View style={styles.entryCard}>
       <View style={styles.entryHeader}>
         <Text style={styles.entryTitle}>{entry.title || '제목 없음'}</Text>
-        <Text style={styles.remaining}>{remaining}</Text>
       </View>
       <Text style={styles.entryBody}>{entry.content}</Text>
       <View style={styles.entryFooter}>
@@ -60,11 +49,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#f1f5f9',
-  },
-  remaining: {
-    marginLeft: 12,
-    fontSize: 13,
-    color: '#38bdf8',
   },
   entryBody: {
     fontSize: 16,

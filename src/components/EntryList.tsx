@@ -1,24 +1,22 @@
 import React, { useCallback } from 'react';
 import { FlatList, ListRenderItem, StyleSheet, Text, View } from 'react-native';
-import { DiaryEntry } from '../hooks/useDiaryEntries';
-import { EntryCard } from './EntryCard';
+import { DiaryEntry } from '@/types/diary';
+import { EntryCard } from '@/components/EntryCard';
 
 type EntryListProps = {
   entries: DiaryEntry[];
-  currentTime: number;
   isLoading: boolean;
   onDelete: (id: string) => void;
 };
 
 export const EntryList: React.FC<EntryListProps> = ({
   entries,
-  currentTime,
   isLoading,
   onDelete,
 }) => {
   const renderItem = useCallback<ListRenderItem<DiaryEntry>>(
-    ({ item }) => <EntryCard entry={item} onDelete={onDelete} currentTime={currentTime} />,
-    [onDelete, currentTime]
+    ({ item }) => <EntryCard entry={item} onDelete={onDelete} />,
+    [onDelete]
   );
 
   if (isLoading) {

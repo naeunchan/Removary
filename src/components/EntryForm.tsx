@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { DiaryDraft } from '../hooks/useDiaryEntries';
+import { DiaryDraft } from '@/types/diary';
 
 type EntryFormProps = {
   draft: DiaryDraft;
