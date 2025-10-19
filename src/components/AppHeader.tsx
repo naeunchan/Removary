@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { formatDateYMD } from '@/utils/time';
 
 type AppHeaderProps = {
@@ -34,9 +35,26 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ lastVisitedAt, daysSinceLa
     [daysSinceLastVisit]
   );
 
+  const versionLabel = useMemo(() => {
+    const expoVersion = Constants.expoConfig?.version;
+    if (expoVersion) {
+      return `v${expoVersion}`;
+    }
+
+    const legacyManifest = (Constants as Record<string, unknown>).manifest as
+      | { version?: string | null }
+      | undefined;
+    const manifestVersion = legacyManifest?.version ?? null;
+
+    return manifestVersion ? `v${manifestVersion}` : null;
+  }, []);
+
   return (
     <View style={styles.header}>
-      <Text style={styles.title}>Removary</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Removary</Text>
+        {versionLabel ? <Text style={styles.versionTag}>{versionLabel}</Text> : null}
+      </View>
       <Text style={styles.subtitle}>{visitMessage}</Text>
       <Text style={styles.lastVisit}>{lastVisitLabel}</Text>
     </View>
@@ -47,10 +65,20 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 28,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
   title: {
     fontSize: 34,
     fontWeight: '700',
     color: '#1c1c1e',
+  },
+  versionTag: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#94a3b8',
+    marginLeft: 12,
   },
   subtitle: {
     marginTop: 6,
