@@ -14,7 +14,7 @@ import { EntrySummary } from '../components/EntrySummary';
 import { useDiaryEntries } from '../hooks/useDiaryEntries';
 
 export const HomeScreen: React.FC = () => {
-  const { entries, draft, isLoading, now, handleChange, handleSubmit, handleDelete } =
+  const { entries, draft, isLoading, now, expiresAt, handleChange, handleSubmit, handleDelete } =
     useDiaryEntries();
 
   return (
@@ -34,6 +34,7 @@ export const HomeScreen: React.FC = () => {
           <EntryList
             entries={entries}
             currentTime={now}
+            expiresAt={expiresAt}
             isLoading={isLoading}
             onDelete={handleDelete}
           />

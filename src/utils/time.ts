@@ -20,6 +20,3 @@ export const formatRemainingTime = (expiresAt: number, currentTime: number = Dat
 
   return `${minutes}분 남음`;
 };
-
-export const getExpiryTimestamp = (createdAt: string | number | Date, retentionDays: number): number =>
-  new Date(createdAt).getTime() + retentionDays * DAY_MS;

@@ -1,22 +1,19 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DiaryEntry, RETENTION_DAYS } from '../hooks/useDiaryEntries';
-import { formatRemainingTime, getExpiryTimestamp } from '../utils/time';
+import { DiaryEntry } from '../hooks/useDiaryEntries';
+import { formatRemainingTime } from '../utils/time';
 
 type EntryCardProps = {
   entry: DiaryEntry;
   onDelete: (id: string) => void;
   currentTime: number;
+  expiresAt: number | null;
 };
 
-export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete, currentTime }) => {
+export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete, currentTime, expiresAt }) => {
   const createdAt = useMemo(() => new Date(entry.createdAt), [entry.createdAt]);
-  const expiresAt = useMemo(
-    () => getExpiryTimestamp(entry.createdAt, RETENTION_DAYS),
-    [entry.createdAt]
-  );
   const remaining = useMemo(
-    () => formatRemainingTime(expiresAt, currentTime),
+    () => (expiresAt ? formatRemainingTime(expiresAt, currentTime) : '계산 중...'),
     [expiresAt, currentTime]
   );
 

@@ -6,6 +6,7 @@ import { EntryCard } from './EntryCard';
 type EntryListProps = {
   entries: DiaryEntry[];
   currentTime: number;
+  expiresAt: number | null;
   isLoading: boolean;
   onDelete: (id: string) => void;
 };
@@ -13,12 +14,15 @@ type EntryListProps = {
 export const EntryList: React.FC<EntryListProps> = ({
   entries,
   currentTime,
+  expiresAt,
   isLoading,
   onDelete,
 }) => {
   const renderItem = useCallback<ListRenderItem<DiaryEntry>>(
-    ({ item }) => <EntryCard entry={item} onDelete={onDelete} currentTime={currentTime} />,
-    [onDelete, currentTime]
+    ({ item }) => (
+      <EntryCard entry={item} onDelete={onDelete} currentTime={currentTime} expiresAt={expiresAt} />
+    ),
+    [onDelete, currentTime, expiresAt]
   );
 
   if (isLoading) {

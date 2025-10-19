@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { DAY_MS } from '../utils/time';
 
 const STORAGE_KEY = '@removary_entries';
+const LAST_ACCESS_KEY = '@removary_last_access';
 export const RETENTION_DAYS = 30;
 
 export interface DiaryEntry {
@@ -38,11 +39,6 @@ const isDiaryEntryArray = (value: unknown): value is DiaryEntry[] =>
     );
   });
 
-const pruneExpiredEntries = (entries: DiaryEntry[], referenceTime: number): DiaryEntry[] =>
-  entries.filter(
-    (entry) => referenceTime - new Date(entry.createdAt).getTime() < RETENTION_DAYS * DAY_MS
-  );
-
 const usePersistEntries = () =>
   useCallback(async (nextEntries: DiaryEntry[]) => {
     try {
@@ -54,59 +50,70 @@ const usePersistEntries = () =>
   }, []);
 
 export const useDiaryEntries = () => {
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [draft, setDraft] = useState<DiaryDraft>(createEmptyEntry());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [now, setNow] = useState<number>(Date.now());
   const persistEntries = usePersistEntries();
+  const persistLastAccess = useCallback(async (timestamp: number) => {
+    try {
+      await AsyncStorage.setItem(LAST_ACCESS_KEY, timestamp.toString());
+    } catch (error) {
+      console.error('Failed to persist last access timestamp', error);
+    }
+  }, []);
 
   const loadEntries = useCallback(async () => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!raw) {
+      const [rawEntries, rawLastAccess] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(LAST_ACCESS_KEY),
+      ]);
+
+      const nowTs = Date.now();
+      const parsedLastAccess = rawLastAccess ? Number(rawLastAccess) : null;
+      const lastAccessTimestamp =
+        parsedLastAccess !== null && !Number.isNaN(parsedLastAccess) ? parsedLastAccess : null;
+
+      setNow(nowTs);
+      if (lastAccessTimestamp && nowTs - lastAccessTimestamp >= RETENTION_DAYS * DAY_MS) {
         setEntries([]);
-        return;
-      }
-
-      const parsed: unknown = JSON.parse(raw);
-      if (!isDiaryEntryArray(parsed)) {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      } else if (rawEntries) {
+        const parsedEntries: unknown = JSON.parse(rawEntries);
+        if (isDiaryEntryArray(parsedEntries)) {
+          setEntries(parsedEntries);
+        } else {
+          setEntries([]);
+        }
+      } else {
         setEntries([]);
-        return;
       }
 
-      const validEntries = pruneExpiredEntries(parsed, Date.now());
-      setEntries(validEntries);
-
-      if (validEntries.length !== parsed.length) {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validEntries));
-      }
+      setExpiresAt(nowTs + RETENTION_DAYS * DAY_MS);
+      await persistLastAccess(nowTs);
     } catch (error) {
       console.error('Failed to load diary entries', error);
       Alert.alert('오류', '다이어리를 불러오는 중 문제가 발생했어요.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [persistLastAccess]);
 
   useEffect(() => {
     loadEntries();
   }, [loadEntries]);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      setExpiresAt(current + RETENTION_DAYS * DAY_MS);
+      void persistLastAccess(current);
+    }, 60 * 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    setEntries((prev) => {
-      const filtered = pruneExpiredEntries(prev, now);
-      if (filtered.length !== prev.length) {
-        void persistEntries(filtered);
-        return filtered;
-      }
-      return prev;
-    });
-  }, [now, persistEntries]);
+  }, [persistLastAccess]);
 
   const handleChange = useCallback((field: keyof DiaryDraft, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -125,6 +132,11 @@ export const useDiaryEntries = () => {
       createdAt: new Date().toISOString(),
     };
 
+    const updatedAccess = Date.now();
+    setNow(updatedAccess);
+    setExpiresAt(updatedAccess + RETENTION_DAYS * DAY_MS);
+    void persistLastAccess(updatedAccess);
+
     setEntries((prev) => {
       const next = [newEntry, ...prev];
       void persistEntries(next);
@@ -132,7 +144,7 @@ export const useDiaryEntries = () => {
     });
     setDraft(createEmptyEntry());
     Alert.alert('저장 완료', '새로운 다이어리가 추가되었어요.');
-  }, [draft, persistEntries]);
+  }, [draft, persistEntries, persistLastAccess]);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -142,6 +154,11 @@ export const useDiaryEntries = () => {
           text: '삭제',
           style: 'destructive',
           onPress: () => {
+            const updatedAccess = Date.now();
+            setNow(updatedAccess);
+            setExpiresAt(updatedAccess + RETENTION_DAYS * DAY_MS);
+            void persistLastAccess(updatedAccess);
+
             setEntries((prev) => {
               const next = prev.filter((entry) => entry.id !== id);
               void persistEntries(next);
@@ -151,7 +168,7 @@ export const useDiaryEntries = () => {
         },
       ]);
     },
-    [persistEntries]
+    [persistEntries, persistLastAccess]
   );
 
   return {
@@ -159,6 +176,7 @@ export const useDiaryEntries = () => {
     draft,
     isLoading,
     now,
+    expiresAt,
     handleChange,
     handleSubmit,
     handleDelete,
