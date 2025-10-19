@@ -21,7 +21,8 @@ const isDiaryEntryArray = (value: unknown): value is DiaryEntry[] =>
       typeof candidate.id === 'string' &&
       typeof candidate.title === 'string' &&
       typeof candidate.content === 'string' &&
-      typeof candidate.createdAt === 'string'
+      typeof candidate.createdAt === 'string' &&
+      (typeof candidate.isCompleted === 'boolean' || typeof candidate.isCompleted === 'undefined')
     );
   });
 
@@ -92,7 +93,16 @@ export const useDiaryEntries = () => {
       } else if (rawEntries) {
         const parsedEntries: unknown = JSON.parse(rawEntries);
         if (isDiaryEntryArray(parsedEntries)) {
-          setEntries(parsedEntries);
+          const sanitizedEntries = parsedEntries.map((entry) => ({
+            ...entry,
+            isCompleted: typeof entry.isCompleted === 'boolean' ? entry.isCompleted : false,
+          }));
+          setEntries(sanitizedEntries);
+
+          const needsPersist = parsedEntries.some((entry) => typeof entry.isCompleted !== 'boolean');
+          if (needsPersist) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedEntries));
+          }
         } else {
           setEntries([]);
         }
@@ -144,6 +154,7 @@ export const useDiaryEntries = () => {
       title: draft.title.trim(),
       content: draft.content.trim(),
       createdAt: new Date().toISOString(),
+      isCompleted: false,
     };
 
     const updatedAccess = Date.now();
@@ -160,25 +171,49 @@ export const useDiaryEntries = () => {
   }, [draft, persistEntries, updateAccessTimestamp]);
 
   const handleDelete = useCallback(
-    (id: string) => {
+    (id: string, options?: { skipConfirm?: boolean }) => {
+      const removeEntry = () => {
+        const updatedAccess = Date.now();
+        setNow(updatedAccess);
+        updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
+
+        setEntries((prev) => {
+          const next = prev.filter((entry) => entry.id !== id);
+          void persistEntries(next);
+          return next;
+        });
+      };
+
+      if (options?.skipConfirm) {
+        removeEntry();
+        return;
+      }
+
       Alert.alert('삭제 확인', '정말로 이 다이어리를 삭제할까요?', [
         { text: '취소', style: 'cancel' },
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () => {
-            const updatedAccess = Date.now();
-            setNow(updatedAccess);
-            updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
-
-            setEntries((prev) => {
-              const next = prev.filter((entry) => entry.id !== id);
-              void persistEntries(next);
-              return next;
-            });
-          },
+          onPress: removeEntry,
         },
       ]);
+    },
+    [persistEntries, updateAccessTimestamp]
+  );
+
+  const handleToggleComplete = useCallback(
+    (id: string) => {
+      const updatedAccess = Date.now();
+      setNow(updatedAccess);
+      updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
+
+      setEntries((prev) => {
+        const next = prev.map((entry) =>
+          entry.id === id ? { ...entry, isCompleted: !entry.isCompleted } : entry
+        );
+        void persistEntries(next);
+        return next;
+      });
     },
     [persistEntries, updateAccessTimestamp]
   );
@@ -194,5 +229,6 @@ export const useDiaryEntries = () => {
     handleChange,
     handleSubmit,
     handleDelete,
+    handleToggleComplete,
   };
 };

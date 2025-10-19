@@ -6,17 +6,21 @@ import { EntryCard } from '@/components/EntryCard';
 type EntryListProps = {
   entries: DiaryEntry[];
   isLoading: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, options?: { skipConfirm?: boolean }) => void;
+  onToggleComplete: (id: string) => void;
 };
 
 export const EntryList: React.FC<EntryListProps> = ({
   entries,
   isLoading,
   onDelete,
+  onToggleComplete,
 }) => {
   const renderItem = useCallback<ListRenderItem<DiaryEntry>>(
-    ({ item }) => <EntryCard entry={item} onDelete={onDelete} />,
-    [onDelete]
+    ({ item }) => (
+      <EntryCard entry={item} onDelete={onDelete} onToggleComplete={onToggleComplete} />
+    ),
+    [onDelete, onToggleComplete]
   );
 
   if (isLoading) {
@@ -42,6 +46,7 @@ export const EntryList: React.FC<EntryListProps> = ({
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         scrollEnabled={false}
       />
     </View>
@@ -53,7 +58,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   list: {
+    paddingVertical: 8,
     paddingBottom: 12,
+  },
+  separator: {
+    height: 12,
   },
   helperText: {
     color: '#9ca3af',

@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/AppHeader';
 import { EntryForm } from '@/components/EntryForm';
 import { EntryList } from '@/components/EntryList';
@@ -23,6 +17,7 @@ export const HomeScreen: React.FC = () => {
     handleChange,
     handleSubmit,
     handleDelete,
+    handleToggleComplete,
   } = useDiaryEntries();
 
   return (
@@ -43,6 +38,7 @@ export const HomeScreen: React.FC = () => {
             entries={entries}
             isLoading={isLoading}
             onDelete={handleDelete}
+            onToggleComplete={handleToggleComplete}
           />
         </ScrollView>
       </KeyboardAvoidingView>
