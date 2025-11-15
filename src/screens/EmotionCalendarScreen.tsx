@@ -1,6 +1,14 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DayEmotion } from '@/types/diaryModels';
 import { useDiaryStore } from '@/store/diaryStore';
@@ -9,7 +17,14 @@ type EmotionCalendarScreenProps = {
   onClose: () => void;
 };
 
+type CalendarCell = {
+  id: string;
+  date: Date | null;
+};
+
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const CELL_HORIZONTAL_PADDING = 10;
+const CELL_GAP = 6;
 
 const MOOD_META: Record<
   DayEmotion['mood'],
@@ -27,33 +42,33 @@ const MOOD_META: Record<
 
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
-const buildCalendarMatrix = (visibleDate: Date) => {
+const buildCalendarCells = (visibleDate: Date): CalendarCell[] => {
   const year = visibleDate.getFullYear();
   const month = visibleDate.getMonth();
   const startWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
-  const weeks: (Date | null)[][] = [];
 
-  for (let cell = 0; cell < totalCells; cell += 1) {
-    if (cell % 7 === 0) {
-      weeks.push([]);
-    }
-    const dayNum = cell - startWeekday + 1;
+  const cells: CalendarCell[] = [];
+  for (let index = 0; index < totalCells; index += 1) {
+    const dayNum = index - startWeekday + 1;
     if (dayNum < 1 || dayNum > daysInMonth) {
-      weeks[weeks.length - 1].push(null);
+      cells.push({ id: `pad-${index}`, date: null });
     } else {
-      weeks[weeks.length - 1].push(new Date(year, month, dayNum));
+      cells.push({ id: `day-${year}-${month}-${dayNum}`, date: new Date(year, month, dayNum) });
     }
   }
-
-  return weeks;
+  return cells;
 };
 
 export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ onClose }) => {
   const dayEmotions = useDiaryStore((state) => state.dayEmotions);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
+  const gridWidth = width - 40; // content paddingHorizontal: 20 on each side
+  const innerGridWidth = gridWidth - CELL_HORIZONTAL_PADDING * 2;
+  const cellSize = useMemo(() => (innerGridWidth - CELL_GAP * 6) / 7, [innerGridWidth]);
 
   const emotionMap = useMemo(() => {
     const map = new Map<string, DayEmotion['mood']>();
@@ -63,7 +78,7 @@ export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ on
     return map;
   }, [dayEmotions]);
 
-  const weeks = useMemo(() => buildCalendarMatrix(visibleMonth), [visibleMonth]);
+  const calendarCells = useMemo(() => buildCalendarCells(visibleMonth), [visibleMonth]);
   const monthLabel = useMemo(
     () => visibleMonth.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' }),
     [visibleMonth],
@@ -79,14 +94,43 @@ export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ on
     });
   }, []);
 
-  const handleSelectDay = useCallback(
-    (date?: Date | null) => {
-      if (!date) {
-        return;
+  const handleSelectDay = useCallback((date?: Date | null) => {
+    if (!date) {
+      return;
+    }
+    setSelectedDate(formatDate(date));
+  }, []);
+
+  const renderCell = useCallback(
+    ({ item }: { item: CalendarCell }) => {
+      if (!item.date) {
+        return <View style={[styles.dayCellPlaceholder, { width: cellSize, height: cellSize }]} />;
       }
-      setSelectedDate(formatDate(date));
+
+      const dateStr = formatDate(item.date);
+      const mood = emotionMap.get(dateStr);
+      const isSelected = selectedDate === dateStr;
+
+      return (
+        <TouchableOpacity
+          style={[
+            styles.dayCell,
+            { width: cellSize, height: cellSize },
+            isSelected && styles.dayCellSelected,
+            mood && { backgroundColor: `${MOOD_META[mood].color}33` },
+          ]}
+          onPress={() => handleSelectDay(item.date)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+        >
+          <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>
+            {item.date.getDate()}
+          </Text>
+          {mood && <View style={[styles.moodDot, { backgroundColor: MOOD_META[mood].color }]} />}
+        </TouchableOpacity>
+      );
     },
-    [setSelectedDate],
+    [cellSize, emotionMap, handleSelectDay, selectedDate],
   );
 
   return (
@@ -99,7 +143,7 @@ export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ on
         <Text style={styles.headerTitle}>감정 캘린더</Text>
         <View style={styles.backButton} />
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity
             style={styles.monthButton}
@@ -127,40 +171,15 @@ export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ on
         </View>
 
         <View style={styles.calendarGrid}>
-          {weeks.map((week, weekIndex) => (
-            <View key={`week-${weekIndex}`} style={styles.weekRow}>
-              {week.map((date, dayIndex) => {
-                if (!date) {
-                  return <View key={`day-${dayIndex}`} style={styles.emptyCell} />;
-                }
-
-                const dateStr = formatDate(date);
-                const mood = emotionMap.get(dateStr);
-                const isSelected = selectedDate === dateStr;
-
-                return (
-                  <TouchableOpacity
-                    key={dateStr}
-                    style={[
-                      styles.dayCell,
-                      isSelected && styles.dayCellSelected,
-                      mood && { backgroundColor: MOOD_META[mood].color + '33' },
-                    ]}
-                    onPress={() => handleSelectDay(date)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                  >
-                    <Text style={[styles.dayText, isSelected && styles.dayTextSelected]}>
-                      {date.getDate()}
-                    </Text>
-                    {mood && (
-                      <View style={[styles.moodDot, { backgroundColor: MOOD_META[mood].color }]} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
+          <FlatList
+            data={calendarCells}
+            renderItem={renderCell}
+            keyExtractor={(item) => item.id}
+            numColumns={7}
+            columnWrapperStyle={{ gap: CELL_GAP }}
+            contentContainerStyle={{ gap: CELL_GAP, paddingHorizontal: CELL_HORIZONTAL_PADDING }}
+            scrollEnabled={false}
+          />
         </View>
 
         <View style={styles.legendContainer}>
@@ -185,7 +204,7 @@ export const EmotionCalendarScreen: React.FC<EmotionCalendarScreenProps> = ({ on
             <Text style={styles.summaryHint}>날짜를 선택하면 감정 기록을 확인할 수 있어요.</Text>
           )}
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -216,6 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e7eb',
   },
   content: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
@@ -239,11 +259,11 @@ const styles = StyleSheet.create({
   },
   weekHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 6,
+    paddingHorizontal: CELL_HORIZONTAL_PADDING,
   },
   weekdayText: {
-    width: `${100 / 7}%`,
+    flex: 1,
     textAlign: 'center',
     color: '#9ca3af',
     fontSize: 13,
@@ -253,7 +273,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#fff',
     paddingVertical: 12,
-    paddingHorizontal: 6,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -261,19 +280,15 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
   },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+  dayCellPlaceholder: {
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
-    marginHorizontal: 2,
     padding: 4,
   },
   dayCellSelected: {
@@ -294,11 +309,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
     marginTop: 4,
-  },
-  emptyCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    marginHorizontal: 2,
   },
   legendContainer: {
     flexDirection: 'row',
