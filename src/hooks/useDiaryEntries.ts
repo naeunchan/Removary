@@ -10,6 +10,48 @@ const createEmptyEntry = (): DiaryDraft => ({
   content: '',
 });
 
+const RETENTION_WINDOW_MS = RETENTION_DAYS * DAY_MS;
+
+const getEntryExpiryTimestamp = (entry: DiaryEntry): number | null => {
+  const createdAtTimestamp = Date.parse(entry.createdAt);
+  if (Number.isNaN(createdAtTimestamp)) {
+    return null;
+  }
+  return createdAtTimestamp + RETENTION_WINDOW_MS;
+};
+
+const pruneExpiredEntries = (entries: DiaryEntry[], referenceTime: number) => {
+  const nextEntries: DiaryEntry[] = [];
+  let removed = false;
+
+  entries.forEach((entry) => {
+    const expiryTimestamp = getEntryExpiryTimestamp(entry);
+    if (expiryTimestamp === null || expiryTimestamp <= referenceTime) {
+      removed = true;
+      return;
+    }
+    nextEntries.push(entry);
+  });
+
+  return { entries: nextEntries, removed };
+};
+
+const calculateNextExpiryTimestamp = (entries: DiaryEntry[]): number | null => {
+  let nextExpiry: number | null = null;
+
+  entries.forEach((entry) => {
+    const expiryTimestamp = getEntryExpiryTimestamp(entry);
+    if (expiryTimestamp === null) {
+      return;
+    }
+    if (nextExpiry === null || expiryTimestamp < nextExpiry) {
+      nextExpiry = expiryTimestamp;
+    }
+  });
+
+  return nextExpiry;
+};
+
 const isDiaryEntryArray = (value: unknown): value is DiaryEntry[] =>
   Array.isArray(value) &&
   value.every((item) => {
@@ -55,14 +97,13 @@ export const useDiaryEntries = () => {
 
   const updateAccessTimestamp = useCallback(
     (timestamp: number, options?: { resetVisitDiff?: boolean }) => {
-      setExpiresAt(timestamp + RETENTION_DAYS * DAY_MS);
       if (options?.resetVisitDiff) {
         setLastVisitedAt(timestamp);
         setDaysSinceLastVisit(0);
       }
       void persistLastAccess(timestamp);
     },
-    [persistLastAccess]
+    [persistLastAccess],
   );
 
   const loadEntries = useCallback(async () => {
@@ -87,8 +128,9 @@ export const useDiaryEntries = () => {
         setDaysSinceLastVisit(null);
       }
 
-      if (lastAccessTimestamp && nowTs - lastAccessTimestamp >= RETENTION_DAYS * DAY_MS) {
+      if (lastAccessTimestamp && nowTs - lastAccessTimestamp >= RETENTION_WINDOW_MS) {
         setEntries([]);
+        setExpiresAt(null);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
       } else if (rawEntries) {
         const parsedEntries: unknown = JSON.parse(rawEntries);
@@ -97,17 +139,22 @@ export const useDiaryEntries = () => {
             ...entry,
             isCompleted: typeof entry.isCompleted === 'boolean' ? entry.isCompleted : false,
           }));
-          setEntries(sanitizedEntries);
-
-          const needsPersist = parsedEntries.some((entry) => typeof entry.isCompleted !== 'boolean');
-          if (needsPersist) {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedEntries));
+          const { entries: activeEntries, removed } = pruneExpiredEntries(sanitizedEntries, nowTs);
+          setEntries(activeEntries);
+          setExpiresAt(calculateNextExpiryTimestamp(activeEntries));
+          const needsPersist = parsedEntries.some(
+            (entry) => typeof entry.isCompleted !== 'boolean',
+          );
+          if (needsPersist || removed) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeEntries));
           }
         } else {
           setEntries([]);
+          setExpiresAt(null);
         }
       } else {
         setEntries([]);
+        setExpiresAt(null);
       }
 
       updateAccessTimestamp(nowTs);
@@ -129,14 +176,28 @@ export const useDiaryEntries = () => {
   }, []);
 
   useEffect(() => {
-    if (!expiresAt) {
+    if (!expiresAt || now < expiresAt) {
       return;
     }
-    if (now >= expiresAt) {
-      setEntries([]);
-      void persistEntries([]);
-      updateAccessTimestamp(now, { resetVisitDiff: true });
-    }
+
+    setEntries((prev) => {
+      if (!prev.length) {
+        setExpiresAt(null);
+        return prev;
+      }
+
+      const { entries: activeEntries, removed } = pruneExpiredEntries(prev, now);
+      const nextExpiry = calculateNextExpiryTimestamp(activeEntries);
+      setExpiresAt(nextExpiry);
+
+      if (!removed) {
+        return prev;
+      }
+
+      void persistEntries(activeEntries);
+      return activeEntries;
+    });
+    updateAccessTimestamp(now, { resetVisitDiff: true });
   }, [expiresAt, now, persistEntries, updateAccessTimestamp]);
 
   const handleChange = useCallback((field: keyof DiaryDraft, value: string) => {
@@ -163,6 +224,7 @@ export const useDiaryEntries = () => {
 
     setEntries((prev) => {
       const next = [newEntry, ...prev];
+      setExpiresAt(calculateNextExpiryTimestamp(next));
       void persistEntries(next);
       return next;
     });
@@ -179,6 +241,10 @@ export const useDiaryEntries = () => {
 
         setEntries((prev) => {
           const next = prev.filter((entry) => entry.id !== id);
+          if (next.length === prev.length) {
+            return prev;
+          }
+          setExpiresAt(calculateNextExpiryTimestamp(next));
           void persistEntries(next);
           return next;
         });
@@ -198,7 +264,7 @@ export const useDiaryEntries = () => {
         },
       ]);
     },
-    [persistEntries, updateAccessTimestamp]
+    [persistEntries, updateAccessTimestamp],
   );
 
   const handleToggleComplete = useCallback(
@@ -208,14 +274,23 @@ export const useDiaryEntries = () => {
       updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
 
       setEntries((prev) => {
-        const next = prev.map((entry) =>
-          entry.id === id ? { ...entry, isCompleted: !entry.isCompleted } : entry
-        );
+        let hasUpdates = false;
+        const next = prev.map((entry) => {
+          if (entry.id === id) {
+            hasUpdates = true;
+            return { ...entry, isCompleted: !entry.isCompleted };
+          }
+          return entry;
+        });
+        if (!hasUpdates) {
+          return prev;
+        }
+        setExpiresAt(calculateNextExpiryTimestamp(next));
         void persistEntries(next);
         return next;
       });
     },
-    [persistEntries, updateAccessTimestamp]
+    [persistEntries, updateAccessTimestamp],
   );
 
   return {
