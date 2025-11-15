@@ -27,6 +27,12 @@
    ```
 3. iOS 시뮬레이터, Android 에뮬레이터, Expo Go 앱 등에서 앱을 확인하세요.
 
+## 코드 스타일 검사
+- `npm run lint`: ESLint로 전체 코드 검사
+- `npm run lint:fix`: 자동 고칠 수 있는 ESLint 오류 수정
+- `npm run format`: Prettier 포맷 검증
+- `npm run format:write`: Prettier로 코드 일괄 정렬
+
 ## 구조
 - `App.tsx`: Expo 앱 엔트리, 화면을 렌더링합니다.
 - `src/screens/HomeScreen.tsx`: 다이어리 메인 화면 구성.
