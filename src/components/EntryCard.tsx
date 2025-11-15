@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import Animated, { SharedValue, useAnimatedStyle } from "react-native-reanimated";
+import type { DiaryCategory } from "@/types/diaryModels";
 import { DiaryEntry } from "@/types/diary";
 import { formatDateYMD } from "@/utils/time";
 
@@ -64,12 +65,29 @@ const RightAction: React.FC<SwipeActionProps> = ({ width, progress, translation 
 	);
 };
 
+const CATEGORY_META: Record<
+	DiaryCategory,
+	{
+		label: string;
+		bg: string;
+		text: string;
+	}
+> = {
+	work: { label: "일", bg: "#e0f2fe", text: "#0369a1" },
+	relationship: { label: "관계", bg: "#fee2e2", text: "#b91c1c" },
+	daily: { label: "일상", bg: "#ede9fe", text: "#5b21b6" },
+	study: { label: "공부", bg: "#dcfce7", text: "#15803d" },
+	etc: { label: "기타", bg: "#f3f4f6", text: "#4b5563" },
+};
+
 export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete, onToggleComplete }) => {
 	const { width } = useWindowDimensions();
 	const swipeThresholdRatio = 0.5;
 	const effectiveWidth = Math.max(width * swipeThresholdRatio, 72);
 	const swipeableRef = useRef<any>(null);
 
+	const resolvedCategory = (entry.category ?? "daily") as DiaryCategory;
+	const categoryMeta = CATEGORY_META[resolvedCategory] ?? CATEGORY_META.daily;
 	const createdAt = useMemo(() => new Date(entry.createdAt), [entry.createdAt]);
 	const createdAtDate = useMemo(() => formatDateYMD(entry.createdAt), [entry.createdAt]);
 	const containerStyle = styles.entryCard;
@@ -116,6 +134,23 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onDelete, onToggleC
 			>
 				<View style={styles.entryWrapper}>
 					<View style={containerStyle}>
+						<View style={styles.entryHeader}>
+							<View style={[styles.categoryTag, { backgroundColor: categoryMeta.bg }]}>
+								<Text style={[styles.categoryText, { color: categoryMeta.text }]}>
+									{categoryMeta.label}
+								</Text>
+							</View>
+							<View style={styles.statusWrapper}>
+								{entry.isCompleted ? (
+									<View style={styles.completedBadge}>
+										<Ionicons name="checkmark-circle" size={16} color="#059669" />
+										<Text style={styles.completedLabel}>완료됨</Text>
+									</View>
+								) : (
+									<Text style={styles.activeLabel}>진행중</Text>
+								)}
+							</View>
+						</View>
 						<Text style={titleStyle}>{entry.title || "제목 없음"}</Text>
 						<Text style={bodyStyle}>{entry.content}</Text>
 						<View style={styles.entryFooter}>
@@ -169,6 +204,40 @@ const styles = StyleSheet.create({
 	createdAt: {
 		fontSize: 13,
 		color: "#9ca3af",
+	},
+	entryHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		marginBottom: 10,
+	},
+	categoryTag: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 999,
+	},
+	categoryText: {
+		fontSize: 12,
+		fontWeight: "600",
+	},
+	statusWrapper: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	completedBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+	},
+	completedLabel: {
+		fontSize: 12,
+		color: "#065f46",
+		fontWeight: "600",
+		marginLeft: 4,
+	},
+	activeLabel: {
+		fontSize: 12,
+		color: "#4b5563",
+		fontWeight: "500",
 	},
 	completedText: {
 		textDecorationLine: "line-through",
