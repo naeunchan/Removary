@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { FlatList, ListRenderItem, StyleSheet, Text, View } from 'react-native';
-import { DiaryEntry } from '@/types/diary';
-import { EntryCard } from '@/components/EntryCard';
+import { DiaryEntry } from '@/features/diary/types/diaryTypes';
+import { EntryCard } from '@/features/diary/components/EntryCard';
 
 type EntryListProps = {
   entries: DiaryEntry[];

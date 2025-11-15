@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useDiaryStore } from '@/store/diaryStore';
-import type { DayEmotion, DiaryCategory } from '@/types/diaryModels';
-import { DiaryDraft } from '@/types/diary';
+import { useDiaryStore } from '@/features/diary/store/useDiaryStore';
+import type { DayEmotion, DiaryCategory } from '@/features/diary/types/diaryTypes';
+import { DiaryDraft } from '@/features/diary/types/diaryTypes';
 
 const CATEGORY_OPTIONS: { label: string; value: DiaryCategory }[] = [
   { label: '일', value: 'work' },

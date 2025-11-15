@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { DAY_MS } from '@/utils/time';
 import { LAST_ACCESS_KEY, RETENTION_DAYS, STORAGE_KEY } from '@/constants/diary';
-import { DiaryDraft, DiaryEntry } from '@/types/diary';
+import { DiaryDraft, DiaryEntry } from '@/features/diary/types/diaryTypes';
 
 const createEmptyEntry = (): DiaryDraft => ({
   title: '',

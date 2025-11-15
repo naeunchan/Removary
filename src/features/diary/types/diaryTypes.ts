@@ -1,6 +1,6 @@
 export type DiaryCategory = 'work' | 'relationship' | 'daily' | 'study' | 'etc';
 
-export type DiaryEntry = {
+export type DiaryStoreEntry = {
   id: string;
   title: string;
   content: string;
@@ -14,3 +14,17 @@ export type DayEmotion = {
   date: string; // YYYY-MM-DD
   mood: 'very_good' | 'good' | 'neutral' | 'bad' | 'very_bad';
 };
+
+export interface DiaryEntry {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  isCompleted: boolean;
+  category?: DiaryCategory;
+}
+
+export interface DiaryDraft {
+  title: string;
+  content: string;
+}
