@@ -1,7 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import type { DayEmotion, DiaryCategory, DiaryEntry } from '@/types/diaryModels';
+import type {
+  DayEmotion,
+  DiaryCategory,
+  DiaryStoreEntry,
+} from '@/features/diary/types/diaryTypes';
 
 type AddEntryPayload = {
   title: string;
@@ -11,14 +15,14 @@ type AddEntryPayload = {
 };
 
 type DiaryStore = {
-  entries: DiaryEntry[];
+  entries: DiaryStoreEntry[];
   dayEmotions: DayEmotion[];
   addEntry: (payload: AddEntryPayload) => void;
   removeEntry: (id: string) => void;
   toggleEntryCompletion: (id: string) => void;
   clearExpiredEntries: () => number;
   setDayEmotion: (emotion: DayEmotion) => void;
-  getExpiredEntries: () => DiaryEntry[];
+  getExpiredEntries: () => DiaryStoreEntry[];
 };
 
 const TWENTY_ONE_DAYS_MS = 21 * 24 * 60 * 60 * 1000;
@@ -72,7 +76,7 @@ const resolveExpiresAt = (expiresAt: string | undefined, createdAt: Date) => {
   return new Date(createdAt.getTime() + TWENTY_ONE_DAYS_MS);
 };
 
-const sanitizeDiaryEntry = (entry: Partial<DiaryEntry>): DiaryEntry => {
+const sanitizeDiaryEntry = (entry: Partial<DiaryStoreEntry>): DiaryStoreEntry => {
   const content = typeof entry.content === 'string' ? entry.content : '';
   const createdAtDate = resolveDate(entry.createdAt);
   const expiresAtDate = resolveExpiresAt(entry.expiresAt, createdAtDate);
@@ -88,15 +92,15 @@ const sanitizeDiaryEntry = (entry: Partial<DiaryEntry>): DiaryEntry => {
   };
 };
 
-const sanitizeEntries = (value: unknown): DiaryEntry[] => {
+const sanitizeEntries = (value: unknown): DiaryStoreEntry[] => {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  return value.map((item) => sanitizeDiaryEntry(item as Partial<DiaryEntry>));
+  return value.map((item) => sanitizeDiaryEntry(item as Partial<DiaryStoreEntry>));
 };
 
-const buildDiaryEntry = ({ title, content, category, createdAt }: AddEntryPayload): DiaryEntry => {
+const buildDiaryEntry = ({ title, content, category, createdAt }: AddEntryPayload): DiaryStoreEntry => {
   const createdAtDate = resolveDate(createdAt);
   const createdAtIso = createdAtDate.toISOString();
   const expiresAtIso = new Date(createdAtDate.getTime() + TWENTY_ONE_DAYS_MS).toISOString();
@@ -132,7 +136,7 @@ export const useDiaryStore = create<DiaryStore>((set, get) => ({
   clearExpiredEntries: () => {
     const now = Date.now();
     const { entries } = get();
-    const nextEntries: DiaryEntry[] = [];
+    const nextEntries: DiaryStoreEntry[] = [];
     let expiredCount = 0;
 
     entries.forEach((entry) => {

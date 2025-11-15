@@ -3,8 +3,8 @@ import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import Animated, { SharedValue, useAnimatedStyle } from "react-native-reanimated";
-import type { DiaryCategory } from "@/types/diaryModels";
-import { DiaryEntry } from "@/types/diary";
+import type { DiaryCategory } from "@/features/diary/types/diaryTypes";
+import { DiaryEntry } from "@/features/diary/types/diaryTypes";
 import { formatDateYMD } from "@/utils/time";
 
 type EntryCardProps = {

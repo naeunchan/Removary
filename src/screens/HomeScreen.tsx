@@ -10,15 +10,18 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppHeader } from '@/components/AppHeader';
-import { ClearExpiredModal } from '@/components/ClearExpiredModal';
-import { EntryForm } from '@/components/EntryForm';
-import { EntryList } from '@/components/EntryList';
-import { EntrySummary } from '@/components/EntrySummary';
-import { useDiaryEntries } from '@/hooks/useDiaryEntries';
-import { useDiaryStore } from '@/store/diaryStore';
-import type { DiaryCategory, DiaryEntry as StoreDiaryEntry } from '@/types/diaryModels';
-import type { DiaryEntry as LegacyDiaryEntry } from '@/types/diary';
+import { AppHeader } from '@/features/diary/components/AppHeader';
+import { ClearExpiredModal } from '@/features/diary/components/ClearExpiredModal';
+import { EntryForm } from '@/features/diary/components/EntryForm';
+import { EntryList } from '@/features/diary/components/EntryList';
+import { EntrySummary } from '@/features/diary/components/EntrySummary';
+import { useDiaryEntries } from '@/features/diary/hooks/useDiaryEntries';
+import { useDiaryStore } from '@/features/diary/store/useDiaryStore';
+import type {
+  DiaryCategory,
+  DiaryStoreEntry,
+  DiaryEntry as LegacyDiaryEntry,
+} from '@/features/diary/types/diaryTypes';
 import { DAY_MS } from '@/utils/time';
 import { RETENTION_DAYS } from '@/constants/diary';
 
@@ -30,7 +33,7 @@ const deriveTitleFromContent = (content: string) => {
   return firstLine ?? '제목 없음';
 };
 
-const mapStoreEntryToLegacy = (entry: StoreDiaryEntry): LegacyDiaryEntry => ({
+const mapStoreEntryToLegacy = (entry: DiaryStoreEntry): LegacyDiaryEntry => ({
   id: entry.id,
   title: entry.title || deriveTitleFromContent(entry.content),
   content: entry.content,

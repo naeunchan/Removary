@@ -10,8 +10,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { DayEmotion } from '@/types/diaryModels';
-import { useDiaryStore } from '@/store/diaryStore';
+import type { DayEmotion } from '@/features/diary/types/diaryTypes';
+import { useDiaryStore } from '@/features/diary/store/useDiaryStore';
 
 type EmotionCalendarScreenProps = {
   onClose: () => void;
