@@ -1,32 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import type {
-  DayEmotion,
-  DiaryCategory,
-  DiaryStoreEntry,
-} from '@/features/diary/types/diaryTypes';
+import type { DayEmotion, DiaryCategory, DiaryStoreEntry } from '@/features/diary/types/diaryTypes';
+import { STORE_STORAGE_KEY, STORE_TTL_MS } from './useDiaryStore.constants';
+import type { AddEntryPayload, DiaryStoreState, PersistedState } from './useDiaryStore.types';
 
-type AddEntryPayload = {
-  title: string;
-  content: string;
-  category: DiaryCategory;
-  createdAt?: string;
-};
-
-type DiaryStore = {
-  entries: DiaryStoreEntry[];
-  dayEmotions: DayEmotion[];
-  addEntry: (payload: AddEntryPayload) => void;
-  removeEntry: (id: string) => void;
-  toggleEntryCompletion: (id: string) => void;
-  clearExpiredEntries: () => number;
-  setDayEmotion: (emotion: DayEmotion) => void;
-  getExpiredEntries: () => DiaryStoreEntry[];
-};
-
-const TWENTY_ONE_DAYS_MS = 21 * 24 * 60 * 60 * 1000;
-const STORAGE_KEY = '@removary/useDiaryStore';
+const STORAGE_KEY = STORE_STORAGE_KEY;
+const STORE_TTL = STORE_TTL_MS;
 let hasHydrated = false;
 
 const generateId = () =>
@@ -73,7 +53,7 @@ const resolveExpiresAt = (expiresAt: string | undefined, createdAt: Date) => {
     }
   }
 
-  return new Date(createdAt.getTime() + TWENTY_ONE_DAYS_MS);
+  return new Date(createdAt.getTime() + STORE_TTL);
 };
 
 const sanitizeDiaryEntry = (entry: Partial<DiaryStoreEntry>): DiaryStoreEntry => {
@@ -100,13 +80,19 @@ const sanitizeEntries = (value: unknown): DiaryStoreEntry[] => {
   return value.map((item) => sanitizeDiaryEntry(item as Partial<DiaryStoreEntry>));
 };
 
-const buildDiaryEntry = ({ title, content, category, createdAt }: AddEntryPayload): DiaryStoreEntry => {
+const buildDiaryEntry = ({
+  id,
+  title,
+  content,
+  category,
+  createdAt,
+}: AddEntryPayload): DiaryStoreEntry => {
   const createdAtDate = resolveDate(createdAt);
   const createdAtIso = createdAtDate.toISOString();
-  const expiresAtIso = new Date(createdAtDate.getTime() + TWENTY_ONE_DAYS_MS).toISOString();
+  const expiresAtIso = new Date(createdAtDate.getTime() + STORE_TTL).toISOString();
 
   return {
-    id: generateId(),
+    id: typeof id === 'string' && id.length > 0 ? id : generateId(),
     title: deriveTitle(title, content),
     content,
     category,
@@ -116,7 +102,7 @@ const buildDiaryEntry = ({ title, content, category, createdAt }: AddEntryPayloa
   };
 };
 
-export const useDiaryStore = create<DiaryStore>((set, get) => ({
+export const useDiaryStore = create<DiaryStoreState>((set, get) => ({
   entries: [],
   dayEmotions: [],
   addEntry: (payload) => {
@@ -129,7 +115,7 @@ export const useDiaryStore = create<DiaryStore>((set, get) => ({
   toggleEntryCompletion: (id) => {
     set((state) => ({
       entries: state.entries.map((entry) =>
-        entry.id === id ? { ...entry, isCompleted: !entry.isCompleted } : entry
+        entry.id === id ? { ...entry, isCompleted: !entry.isCompleted } : entry,
       ),
     }));
   },
@@ -168,9 +154,7 @@ export const useDiaryStore = create<DiaryStore>((set, get) => ({
   },
 }));
 
-const isPersistedState = (
-  value: unknown
-): value is Pick<DiaryStore, 'entries' | 'dayEmotions'> =>
+const isPersistedState = (value: unknown): value is PersistedState =>
   typeof value === 'object' &&
   value !== null &&
   Array.isArray((value as Record<string, unknown>).entries) &&
@@ -198,7 +182,7 @@ const hydrateStore = async () => {
   }
 };
 
-const persistState = async (state: Pick<DiaryStore, 'entries' | 'dayEmotions'>) => {
+const persistState = async (state: PersistedState) => {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
@@ -215,5 +199,5 @@ useDiaryStore.subscribe(
       return;
     }
     void persistState(state);
-  }
+  },
 );

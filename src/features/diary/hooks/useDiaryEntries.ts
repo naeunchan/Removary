@@ -2,15 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { DAY_MS } from '@/utils/time';
-import { LAST_ACCESS_KEY, RETENTION_DAYS, STORAGE_KEY } from '@/constants/diary';
+import { LAST_ACCESS_KEY, STORAGE_KEY } from '@/constants/diary';
 import { DiaryDraft, DiaryEntry } from '@/features/diary/types/diaryTypes';
+import { useDiaryStore } from '@/features/diary/store/useDiaryStore';
+import { EMPTY_ENTRY, RETENTION_WINDOW_MS } from './useDiaryEntries.constants';
+import type { PrunedEntriesResult } from './useDiaryEntries.types';
 
-const createEmptyEntry = (): DiaryDraft => ({
-  title: '',
-  content: '',
-});
-
-const RETENTION_WINDOW_MS = RETENTION_DAYS * DAY_MS;
+const createEmptyEntry = (): DiaryDraft => ({ ...EMPTY_ENTRY });
 
 const getEntryExpiryTimestamp = (entry: DiaryEntry): number | null => {
   const createdAtTimestamp = Date.parse(entry.createdAt);
@@ -20,7 +18,7 @@ const getEntryExpiryTimestamp = (entry: DiaryEntry): number | null => {
   return createdAtTimestamp + RETENTION_WINDOW_MS;
 };
 
-const pruneExpiredEntries = (entries: DiaryEntry[], referenceTime: number) => {
+const pruneExpiredEntries = (entries: DiaryEntry[], referenceTime: number): PrunedEntriesResult => {
   const nextEntries: DiaryEntry[] = [];
   let removed = false;
 
@@ -204,17 +202,23 @@ export const useDiaryEntries = () => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback((options?: { id?: string; createdAt?: string }) => {
     if (!draft.content.trim()) {
       Alert.alert('알림', '내용은 반드시 입력해 주세요.');
       return;
     }
 
+    const resolvedCreatedAt = options?.createdAt ?? new Date().toISOString();
+    const resolvedId =
+      typeof options?.id === 'string' && options.id.length > 0
+        ? options.id
+        : Date.now().toString();
+
     const newEntry: DiaryEntry = {
-      id: Date.now().toString(),
+      id: resolvedId,
       title: draft.title.trim(),
       content: draft.content.trim(),
-      createdAt: new Date().toISOString(),
+      createdAt: resolvedCreatedAt,
       isCompleted: false,
     };
 
@@ -235,12 +239,34 @@ export const useDiaryEntries = () => {
   const handleDelete = useCallback(
     (id: string, options?: { skipConfirm?: boolean }) => {
       const removeEntry = () => {
+        const storeState = useDiaryStore.getState();
+        const storeEntry = storeState.entries.find((entry) => entry.id === id);
+        storeState.removeEntry(id);
+
         const updatedAccess = Date.now();
         setNow(updatedAccess);
         updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
 
         setEntries((prev) => {
-          const next = prev.filter((entry) => entry.id !== id);
+          const next = prev.filter((entry) => {
+            if (entry.id === id) {
+              return false;
+            }
+
+            if (storeEntry) {
+              const createdAtDelta = Math.abs(
+                Date.parse(entry.createdAt) - Date.parse(storeEntry.createdAt),
+              );
+              const isSameCreatedAt =
+                entry.createdAt === storeEntry.createdAt ||
+                (!Number.isNaN(createdAtDelta) && createdAtDelta < 1000);
+              if (isSameCreatedAt) {
+                return false;
+              }
+            }
+
+            return true;
+          });
           if (next.length === prev.length) {
             return prev;
           }
@@ -269,6 +295,8 @@ export const useDiaryEntries = () => {
 
   const handleToggleComplete = useCallback(
     (id: string) => {
+      useDiaryStore.getState().toggleEntryCompletion(id);
+
       const updatedAccess = Date.now();
       setNow(updatedAccess);
       updateAccessTimestamp(updatedAccess, { resetVisitDiff: true });
