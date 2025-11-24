@@ -1,14 +1,10 @@
 import React, { useCallback } from 'react';
-import { FlatList, ListRenderItem, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ListRenderItem, Text, View } from 'react-native';
 import { DiaryEntry } from '@/features/diary/types/diaryTypes';
 import { EntryCard } from '@/features/diary/components/EntryCard';
-
-type EntryListProps = {
-  entries: DiaryEntry[];
-  isLoading: boolean;
-  onDelete: (id: string, options?: { skipConfirm?: boolean }) => void;
-  onToggleComplete: (id: string) => void;
-};
+import { EMPTY_LABEL, LOADING_LABEL } from './EntryList.constants';
+import { styles } from './EntryList.styles';
+import type { EntryListProps } from './EntryList.types';
 
 export const EntryList: React.FC<EntryListProps> = ({
   entries,
@@ -26,7 +22,7 @@ export const EntryList: React.FC<EntryListProps> = ({
   if (isLoading) {
     return (
       <View style={styles.listContainer}>
-        <Text style={styles.helperText}>불러오는 중...</Text>
+        <Text style={styles.helperText}>{LOADING_LABEL}</Text>
       </View>
     );
   }
@@ -34,7 +30,7 @@ export const EntryList: React.FC<EntryListProps> = ({
   if (entries.length === 0) {
     return (
       <View style={styles.listContainer}>
-        <Text style={styles.helperText}>아직 작성된 메모가 없어요.</Text>
+        <Text style={styles.helperText}>{EMPTY_LABEL}</Text>
       </View>
     );
   }
@@ -52,22 +48,3 @@ export const EntryList: React.FC<EntryListProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  listContainer: {
-    paddingVertical: 6,
-  },
-  list: {
-    paddingVertical: 8,
-    paddingBottom: 12,
-  },
-  separator: {
-    height: 12,
-  },
-  helperText: {
-    color: '#9ca3af',
-    textAlign: 'center',
-    paddingVertical: 36,
-    fontSize: 16,
-  },
-});

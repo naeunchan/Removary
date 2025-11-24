@@ -1,9 +1,7 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-
-type EntrySummaryProps = {
-	count: number;
-};
+import React from 'react';
+import { Text, View } from 'react-native';
+import { styles } from './EntrySummary.styles';
+import type { EntrySummaryProps } from './EntrySummary.types';
 
 export const EntrySummary: React.FC<EntrySummaryProps> = ({ count }) => (
 	<View style={styles.listHeader}>
@@ -11,22 +9,3 @@ export const EntrySummary: React.FC<EntrySummaryProps> = ({ count }) => (
 		<Text style={styles.countText}>{count}개</Text>
 	</View>
 );
-
-const styles = StyleSheet.create({
-	listHeader: {
-		flexDirection: "row",
-		alignItems: "center",
-		justifyContent: "space-between",
-		marginBottom: 12,
-	},
-	sectionTitle: {
-		fontSize: 20,
-		fontWeight: "600",
-		color: "#1c1c1e",
-	},
-	countText: {
-		color: "#6b7280",
-		fontWeight: "500",
-		fontSize: 15,
-	},
-});
